@@ -1,0 +1,12 @@
+.container {
+  margin: 30px auto 0;
+}
+
+
+.card-text{
+  font-size: 12px;
+}
+
+.pageContainer{
+ justify-content: space-evenly;
+}

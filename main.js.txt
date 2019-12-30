@@ -1,0 +1,174 @@
+// main
+(function(){
+  const base_URL = "https://lighthouse-user-api.herokuapp.com/"
+  const index_URL = base_URL + "api/v1/users/"
+  const data = []
+  const showUserBody = document.getElementById("show-user-body")
+  let fakerPanel= document.getElementById("fakerPanel")
+  let currentPage = 1
+  let paginationData = []
+//   get api
+  axios.get(index_URL)
+    .then((response) =>{
+    data.push (...response.data.results)
+    getTotalPage(data)
+    getPageData(currentPage, data)  
+  })
+    .catch((err) =>{
+    console.log(err)
+  })
+  
+  // 加入監聽器
+  fakerPanel.addEventListener('click', (event) =>{
+  if (event.target.matches('.card-img-top')){
+    let userBodyContent = `<div class="row">`
+    const URL = index_URL + event.target.dataset.id
+    axios.get(URL)
+    .then((response) => {
+      const data = response.data
+      console.log(data)
+      let showImgContent = `<div class="col-sm-12 col-md-6 col-lg-4" id="show-user-image"><img src="${data.avatar}"> </div>`
+      userBodyContent += showImgContent
+      userBodyContent += `<div class="col-sm-12 col-md-6 col-lg-4"> 
+<h4 id="show-user-name">${data.name} ${data.surname} </h4>`
+      userBodyContent += `<p><em id="show-user-birthdate"> ${data.birthday}</em></p>`
+      userBodyContent += `<p id="show-user-description"> Gender: ${data.gender}<br>Region: ${data.region}<br>Updated: ${data.updated_at}</p>`
+      userBodyContent += `</div> `
+      
+      userBodyContent += `<div class="modal-footer">
+          <button type="button" class="btn btn-secondary favoriteBtn" data-id="${data.id}" data-dismiss="modal">add to my Favorite</button> <button type="button" class="btn btn-secondary removeMyFavorite" data-id="${data.id}" data-dismiss="modal"> delete from favorite list</button> </div>
+ `      
+      showUserBody.innerHTML = userBodyContent 
+    })
+    .catch((err) => {
+      
+    })
+    console.log(event.target.dataset.id)
+    }
+  })
+ 
+
+// display data
+  function displayFakerList(data){
+    let htmlContent = ''
+    data.forEach( function (item, index) {
+      htmlContent += `<div class="col-sm-3 card" style="width: 12rem;">
+<img src="${item.avatar}" class="card-img-top" alt="avatar-image" data-toggle="modal" data-target="#show-user-modal" data-id="${item.id}">
+<div class="card-body">
+<p class="card-text">${item.name} ${item.surname}</p>
+</div>
+</div>`
+      fakerPanel.innerHTML = htmlContent
+    })
+  }
+
+// getpage
+  const pagination = document.getElementById('pagination')
+  const item_Per_Page = 20
+
+  // getPageNumber
+  function getTotalPage(data){
+    let totalPages = Math.ceil(data.length/item_Per_Page) || 1
+    let pageItemContent = `<li class="page-item"><a class="page-link" href="javascript:;" id="previousPage">Previous</a></li>`
+    for (let i=0; i < totalPages; i++){
+      pageItemContent += `<li class="page-item"><a class="page-link" href="javascript:;" id="pageNum" data-page="${i + 1}"> ${i + 1} </a></li>`
+    }
+    pageItemContent += `<li class="page-item"><a class="page-link" href="javascript:;" id="nextPage">Next</a></li>`
+    pagination.innerHTML = pageItemContent
+  }
+
+// swtich page by click
+  pagination.addEventListener('click', (event)=>{
+    let totalPages = Math.ceil(data.length/item_Per_Page) || 1
+    if (event.target.matches("#pageNum")) {
+      currentPage = event.target.dataset.page
+      getPageData(currentPage)
+    } 
+    else if(event.target.matches("#previousPage")){
+      if (currentPage === 1){
+        getPageData(currentPage)  
+      }else {
+        currentPage -= 1
+        getPageData(currentPage)  
+      }       
+    }
+    else if(event.target.matches("#nextPage")){
+      currentPage += 1
+      getPageData(currentPage)  
+      if (currentPage === totalPages){
+        currentPage = totalPages
+        getPageData(currentPage)
+      }   
+    }
+
+  })
+
+//   get Page data
+
+  function getPageData(pageNum, data){
+    paginationData = data || paginationData
+    let offset = (pageNum - 1) * item_Per_Page
+    let pageData = paginationData.slice(offset, offset + item_Per_Page)
+    displayFakerList(pageData)
+  }
+//   search output
+  const searchform = document.getElementById('search')
+  const searchInput = document.getElementById('search-input')
+  searchform.addEventListener('submit', event =>{
+    event.preventDefault()
+    const regex = new RegExp(searchInput.value, 'i')
+    console.log(regex)
+    let results = data.filter( item=> item.name.match(regex) || item.surname.match(regex))
+    getTotalPage(results)
+    getPageData(1, results)
+   })
+//   my favorite function
+  showUserBody.addEventListener('click', event=>{
+    if (event.target.matches(".favoriteBtn")){
+      console.log(event.target)
+      addMyFavorite(event.target.dataset.id)
+    }else if(event.target.matches(".removeMyFavorite")){
+      removeMyFavorite(event.target.dataset.id)   
+    }
+  })
+  
+  function addMyFavorite(id){
+    const list = JSON.parse(localStorage.getItem('myFavorite'))||[]
+    const friends = data.find(item=> item.id === Number(id))
+    if (list.some(item=> item.id === Number(id))){
+      alert(`${friends.name} ${friends.surname} is already in the your favorite list`)    
+    }
+    else{
+      list.push(friends)
+      alert(`${friends.name} ${friends.surname} is already added into your favorite list!`)
+    }
+    localStorage.setItem('myFavorite', JSON.stringify(list))
+  }
+  
+  function removeMyFavorite(id){
+    
+    const list = JSON.parse(localStorage.getItem('myFavorite'))||[] 
+    const friends = data.find(item=> item.id === Number(id))
+    const index = list.findIndex(item=> item.id === Number(id))
+    if (index === -1) {
+      alert(`${friends.name} ${friends.surname} is not in your favorite list`)
+      return
+    } else {
+      alert(`${friends.name} ${friends.surname} is not in your favorite list anymore, go to check!`)
+      list.splice(index, 1)
+      localStorage.setItem('myFavorite', JSON.stringify(list))
+      displayFavoriteList()
+    }
+  }
+//   display favorite list
+  const FavoriteList = document.getElementById('FavoriteList')
+  FavoriteList.addEventListener('click', event=>{  
+    displayFavoriteList()
+  })
+  
+  function displayFavoriteList(){
+    const FavoriteFriends = JSON.parse(localStorage.getItem('myFavorite'))
+    getTotalPage(FavoriteFriends)
+    getPageData(1, FavoriteFriends)
+  }
+})()
